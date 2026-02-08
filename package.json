@@ -1,0 +1,18 @@
+{
+  "name": "crowdfunding-ico",
+  "version": "1.0.0",
+  "description": "Ethereum-based crowdfunding / ICO smart contract (ETH or ERC-20) with secure fund handling and refunds.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "lint": "echo \"No linter configured\"",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}
