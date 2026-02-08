@@ -22,13 +22,21 @@ describe("Crowdfunding (ERC20)", function () {
     await token.mint(bob.address, ethers.parseUnits("1000", 18));
   });
 
-  async function createTokenCampaign(goalTokens) {
+  async function createTokenCampaign({
+    goalTokens = "500",
+    minTokens = "0",
+    whitelistEnabled = false,
+    rewardEnabled = false,
+  } = {}) {
     const block = await ethers.provider.getBlock("latest");
     const deadline = block.timestamp + 3600;
     const tx = await crowdfunding.createCampaign(
       ethers.parseUnits(goalTokens, 18),
       deadline,
-      token.target
+      token.target,
+      ethers.parseUnits(minTokens, 18),
+      whitelistEnabled,
+      rewardEnabled
     );
     await tx.wait();
     const id = await crowdfunding.campaignCount();
@@ -36,7 +44,7 @@ describe("Crowdfunding (ERC20)", function () {
   }
 
   it("accepts ERC20 contributions and tracks balances", async function () {
-    const { id } = await createTokenCampaign("500");
+    const { id } = await createTokenCampaign({ goalTokens: "500" });
 
     await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
     await token.connect(bob).approve(crowdfunding.target, ethers.parseUnits("50", 18));
@@ -51,7 +59,7 @@ describe("Crowdfunding (ERC20)", function () {
   });
 
   it("rejects ETH contributions for token campaigns", async function () {
-    const { id } = await createTokenCampaign("100");
+    const { id } = await createTokenCampaign({ goalTokens: "100" });
 
     await expect(
       crowdfunding.connect(alice).contributeETH(id, { value: ethers.parseEther("1") })
@@ -59,7 +67,7 @@ describe("Crowdfunding (ERC20)", function () {
   });
 
   it("allows creator withdrawal after goal reached", async function () {
-    const { id } = await createTokenCampaign("100");
+    const { id } = await createTokenCampaign({ goalTokens: "100" });
 
     await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
     await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
@@ -72,7 +80,7 @@ describe("Crowdfunding (ERC20)", function () {
   });
 
   it("processes refunds when goal not reached", async function () {
-    const { id } = await createTokenCampaign("500");
+    const { id } = await createTokenCampaign({ goalTokens: "500" });
 
     await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
     await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
@@ -85,7 +93,7 @@ describe("Crowdfunding (ERC20)", function () {
   });
 
   it("rejects refunds before deadline or after success", async function () {
-    const { id } = await createTokenCampaign("100");
+    const { id } = await createTokenCampaign({ goalTokens: "100" });
 
     await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
     await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
@@ -102,5 +110,41 @@ describe("Crowdfunding (ERC20)", function () {
       crowdfunding,
       "GoalReached"
     );
+  });
+
+  it("enforces minimum contribution for tokens", async function () {
+    const { id } = await createTokenCampaign({ goalTokens: "200", minTokens: "10" });
+
+    await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("5", 18));
+    await expect(
+      crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("5", 18))
+    ).to.be.revertedWithCustomError(crowdfunding, "BelowMinimumContribution");
+
+    await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("10", 18));
+    await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("10", 18));
+  });
+
+  it("enforces whitelist when enabled", async function () {
+    const { id } = await createTokenCampaign({ goalTokens: "200", whitelistEnabled: true });
+
+    await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("10", 18));
+    await expect(
+      crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("10", 18))
+    ).to.be.revertedWithCustomError(crowdfunding, "NotWhitelisted");
+
+    await crowdfunding.setWhitelist(id, alice.address, true);
+    await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("10", 18));
+  });
+
+  it("takes a platform fee on token withdrawal when configured", async function () {
+    await crowdfunding.setFee(200, bob.address);
+    const { id } = await createTokenCampaign({ goalTokens: "100" });
+
+    await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
+    await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
+
+    await crowdfunding.withdraw(id);
+    const fee = (ethers.parseUnits("100", 18) * 200n) / 10000n;
+    expect(await token.balanceOf(bob.address)).to.equal(fee);
   });
 });
