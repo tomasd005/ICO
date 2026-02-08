@@ -209,16 +209,6 @@ npx hardhat run scripts/deploy.js --network sepolia
 - [ ] Production guarantees without external audit
 - [ ] Multi-chain deployment orchestration in this repo
 
-## GitHub About (Recommended)
-
-Suggested repository description:
-
-`Crowdfunding + ICO smart contract (ETH/ERC20) with refunds, fees, whitelisting, rewards, DAO approvals`
-
-Suggested topics:
-
-`solidity, hardhat, defi, crowdfunding, ico, openzeppelin, ethereum, sepolia, smart-contracts, erc20, erc721`
-
 ## License
 
 MIT
