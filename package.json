@@ -2,6 +2,9 @@
   "name": "crowdfunding-ico",
   "version": "1.0.0",
   "description": "Ethereum-based crowdfunding / ICO smart contract (ETH or ERC-20) with secure fund handling and refunds.",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",

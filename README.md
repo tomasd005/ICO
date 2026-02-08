@@ -42,9 +42,12 @@ This project demonstrates:
 
 ## Quickstart
 
+Node requirement: LTS `20.x` (see `.nvmrc`).
+
 ### 1) Install
 
 ```bash
+nvm use
 npm install
 ```
 
