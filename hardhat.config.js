@@ -11,6 +11,11 @@ module.exports = {
       }
     }
   },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS === "true",
+    currency: "USD",
+    showTimeSpent: true
+  },
   networks: {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",

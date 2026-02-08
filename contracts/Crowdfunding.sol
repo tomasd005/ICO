@@ -67,8 +67,8 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     event IcoContribution(uint256 indexed campaignId, address indexed contributor, uint256 ethAmount, uint256 tokenAmount);
     event Withdrawn(uint256 indexed campaignId, address indexed creator, uint256 amount, uint256 fee);
     event Refunded(uint256 indexed campaignId, address indexed contributor, uint256 amount);
-    event FeeUpdated(uint256 feeBps, address feeRecipient);
-    event DaoUpdated(address dao);
+    event FeeUpdated(uint256 feeBps, address indexed feeRecipient);
+    event DaoUpdated(address indexed dao);
     event WhitelistUpdated(uint256 indexed campaignId, address indexed contributor, bool allowed);
     event RewardMinted(uint256 indexed campaignId, address indexed contributor, uint256 tokenId);
     event RewardBaseURIUpdated(string newBaseURI);
@@ -94,6 +94,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     error NotWhitelisted();
     error InvalidFeeBps();
     error InvalidFeeRecipient();
+    error InvalidDaoAddress();
     error NotDao();
     error NotIcoCampaign();
     error InvalidTokenPrice();
@@ -227,8 +228,14 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     }
 
     function setDao(address newDao) external onlyOwner {
+        if (newDao == address(0)) revert InvalidDaoAddress();
         dao = newDao;
         emit DaoUpdated(newDao);
+    }
+
+    function clearDao() external onlyOwner {
+        dao = address(0);
+        emit DaoUpdated(address(0));
     }
 
     function setRewardBaseURI(string calldata newBaseURI) external onlyOwner {
@@ -252,7 +259,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
         }
     }
 
-    function contributeETH(uint256 campaignId) external payable {
+    function contributeETH(uint256 campaignId) external payable nonReentrant {
         Campaign storage campaign = _getCampaign(campaignId);
         if (campaign.token != address(0) || campaign.isIco) revert WrongCurrency();
         _validateContribution(campaignId, campaign, msg.value);
@@ -277,7 +284,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
         emit Contribution(campaignId, msg.sender, amount);
     }
 
-    function contributeICO(uint256 campaignId) external payable {
+    function contributeICO(uint256 campaignId) external payable nonReentrant {
         Campaign storage campaign = _getCampaign(campaignId);
         if (!campaign.isIco) revert NotIcoCampaign();
         _validateContribution(campaignId, campaign, msg.value);

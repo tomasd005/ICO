@@ -172,6 +172,7 @@ await c.connect(alice).claimIcoTokens(1);
 - ICO token pool accounting prevents overselling claims.
 
 See `SECURITY.md` for disclosure guidance.
+Detailed review: `docs/security-gas-review-v1.0.0.md`.
 
 ## Testing
 
