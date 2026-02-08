@@ -112,6 +112,26 @@ describe("Crowdfunding (ETH)", function () {
     expect(await ethers.provider.getBalance(crowdfunding.target)).to.equal(0n);
   });
 
+  it("refunds multiple ETH contributors individually", async function () {
+    const { id } = await createEthCampaign({ goalEth: "5" });
+
+    await crowdfunding.connect(alice).contributeETH(id, { value: ethers.parseEther("1") });
+    await crowdfunding.connect(bob).contributeETH(id, { value: ethers.parseEther("0.5") });
+    expect(await ethers.provider.getBalance(crowdfunding.target)).to.equal(ethers.parseEther("1.5"));
+
+    await ethers.provider.send("evm_increaseTime", [3601]);
+    await ethers.provider.send("evm_mine", []);
+
+    await crowdfunding.connect(alice).refund(id);
+    expect(await crowdfunding.contributions(id, alice.address)).to.equal(0n);
+    expect(await crowdfunding.contributions(id, bob.address)).to.equal(ethers.parseEther("0.5"));
+    expect(await ethers.provider.getBalance(crowdfunding.target)).to.equal(ethers.parseEther("0.5"));
+
+    await crowdfunding.connect(bob).refund(id);
+    expect(await crowdfunding.contributions(id, bob.address)).to.equal(0n);
+    expect(await ethers.provider.getBalance(crowdfunding.target)).to.equal(0n);
+  });
+
   it("rejects refunds before deadline or after success", async function () {
     const { id } = await createEthCampaign({ goalEth: "1" });
     await crowdfunding.connect(alice).contributeETH(id, { value: ethers.parseEther("1") });

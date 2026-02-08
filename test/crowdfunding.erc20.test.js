@@ -92,6 +92,28 @@ describe("Crowdfunding (ERC20)", function () {
     expect(await crowdfunding.contributions(id, alice.address)).to.equal(0n);
   });
 
+  it("refunds multiple ERC20 contributors individually", async function () {
+    const { id } = await createTokenCampaign({ goalTokens: "500" });
+
+    await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
+    await token.connect(bob).approve(crowdfunding.target, ethers.parseUnits("50", 18));
+    await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
+    await crowdfunding.connect(bob).contributeToken(id, ethers.parseUnits("50", 18));
+
+    await ethers.provider.send("evm_increaseTime", [3601]);
+    await ethers.provider.send("evm_mine", []);
+
+    await crowdfunding.connect(alice).refund(id);
+    expect(await crowdfunding.contributions(id, alice.address)).to.equal(0n);
+    expect(await crowdfunding.contributions(id, bob.address)).to.equal(ethers.parseUnits("50", 18));
+
+    await crowdfunding.connect(bob).refund(id);
+    expect(await crowdfunding.contributions(id, bob.address)).to.equal(0n);
+    expect(await token.balanceOf(alice.address)).to.equal(ethers.parseUnits("1000", 18));
+    expect(await token.balanceOf(bob.address)).to.equal(ethers.parseUnits("1000", 18));
+    expect(await token.balanceOf(crowdfunding.target)).to.equal(0n);
+  });
+
   it("rejects refunds before deadline or after success", async function () {
     const { id } = await createTokenCampaign({ goalTokens: "100" });
 
