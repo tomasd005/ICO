@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [1.0.0] - 2026-02-08
+
+### Added
+
+- Node LTS pinning via `.nvmrc` and `package.json` engines
+- Technical write-up in `docs/how-i-built-a-secure-ico-crowdfunding-smart-contract.md`
+- README link to the technical write-up
+
+### Changed
+
+- Project frozen as final portfolio version (`v1.0.0`)
+
 ## [0.1.0] - 2026-02-08
 
 ### Added

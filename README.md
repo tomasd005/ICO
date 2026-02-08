@@ -212,6 +212,10 @@ npx hardhat run scripts/deploy.js --network sepolia
 - [ ] Production guarantees without external audit
 - [ ] Multi-chain deployment orchestration in this repo
 
+## Technical Write-up
+
+- `docs/how-i-built-a-secure-ico-crowdfunding-smart-contract.md`
+
 ## License
 
 MIT
