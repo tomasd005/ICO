@@ -139,12 +139,14 @@ describe("Crowdfunding (ERC20)", function () {
   it("takes a platform fee on token withdrawal when configured", async function () {
     await crowdfunding.setFee(200, bob.address);
     const { id } = await createTokenCampaign({ goalTokens: "100" });
+    const bobBefore = await token.balanceOf(bob.address);
 
     await token.connect(alice).approve(crowdfunding.target, ethers.parseUnits("100", 18));
     await crowdfunding.connect(alice).contributeToken(id, ethers.parseUnits("100", 18));
 
     await crowdfunding.withdraw(id);
     const fee = (ethers.parseUnits("100", 18) * 200n) / 10000n;
-    expect(await token.balanceOf(bob.address)).to.equal(fee);
+    const bobAfter = await token.balanceOf(bob.address);
+    expect(bobAfter - bobBefore).to.equal(fee);
   });
 });

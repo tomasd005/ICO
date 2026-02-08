@@ -160,7 +160,7 @@ describe("Crowdfunding (ETH)", function () {
 
     await expect(
       crowdfunding.connect(alice).contributeETH(id, { value: ethers.parseEther("0.1") })
-    ).to.be.revertedWithCustomError(crowdfunding, "CampaignCancelled");
+    ).to.be.revertedWithCustomError(crowdfunding, "CampaignIsCancelled");
   });
 
   it("mints a reward NFT on first contribution", async function () {

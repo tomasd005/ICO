@@ -88,7 +88,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     error GoalReached();
     error NoContribution();
     error TransferFailed();
-    error CampaignCancelled();
+    error CampaignIsCancelled();
     error CampaignNotApproved();
     error BelowMinimumContribution();
     error NotWhitelisted();
@@ -210,7 +210,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     function cancelCampaign(uint256 campaignId) external {
         Campaign storage campaign = _getCampaign(campaignId);
         if (msg.sender != campaign.creator) revert NotCreator();
-        if (campaign.cancelled) revert CampaignCancelled();
+        if (campaign.cancelled) revert CampaignIsCancelled();
         if (campaign.withdrawn) revert AlreadyWithdrawn();
         if (campaign.raised > 0) revert CampaignActive();
 
@@ -313,7 +313,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     function claimIcoTokens(uint256 campaignId) external nonReentrant {
         Campaign storage campaign = _getCampaign(campaignId);
         if (!campaign.isIco) revert NotIcoCampaign();
-        if (campaign.cancelled) revert CampaignCancelled();
+        if (campaign.cancelled) revert CampaignIsCancelled();
         if (campaign.raised < campaign.goal) revert GoalNotReached();
 
         uint256 owed = icoOwed[campaignId][msg.sender];
@@ -349,7 +349,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     function withdraw(uint256 campaignId) external nonReentrant {
         Campaign storage campaign = _getCampaign(campaignId);
         if (msg.sender != campaign.creator) revert NotCreator();
-        if (campaign.cancelled) revert CampaignCancelled();
+        if (campaign.cancelled) revert CampaignIsCancelled();
         if (campaign.withdrawn) revert AlreadyWithdrawn();
         if (campaign.raised < campaign.goal) revert GoalNotReached();
 
@@ -384,7 +384,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
 
     function refund(uint256 campaignId) external nonReentrant {
         Campaign storage campaign = _getCampaign(campaignId);
-        if (campaign.cancelled) revert CampaignCancelled();
+        if (campaign.cancelled) revert CampaignIsCancelled();
         if (block.timestamp < campaign.deadline) revert DeadlineNotReached();
         if (campaign.raised >= campaign.goal) revert GoalReached();
         if (campaign.withdrawn) revert AlreadyWithdrawn();
@@ -413,7 +413,7 @@ contract Crowdfunding is ReentrancyGuard, ERC721, Ownable {
     }
 
     function _validateContribution(uint256 campaignId, Campaign storage campaign, uint256 amount) internal view {
-        if (campaign.cancelled) revert CampaignCancelled();
+        if (campaign.cancelled) revert CampaignIsCancelled();
         if (campaign.withdrawn || block.timestamp >= campaign.deadline) revert CampaignEnded();
         if (!campaign.approved) revert CampaignNotApproved();
         if (amount == 0) revert ZeroAmount();

@@ -1,144 +1,176 @@
 # Crowdfunding Smart Contract (ICO / Kickstarter-style)
 
-An Ethereum-based crowdfunding / ICO smart contract that allows project creators to raise funds in a trust-minimized, transparent way using ETH or ERC-20 tokens.
+[![CI](https://github.com/tomasd005/ICO/actions/workflows/test.yml/badge.svg)](https://github.com/tomasd005/ICO/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Solidity 0.8.20](https://img.shields.io/badge/Solidity-0.8.20-363636)
+![Hardhat 2.x](https://img.shields.io/badge/Hardhat-2.x-F7DF1E)
 
-## Overview
+Ethereum crowdfunding and ICO smart contract supporting ETH and ERC-20 fundraising with transparent goal/deadline enforcement, refunds, fees, whitelisting, DAO approvals, and reward NFTs.
 
-This contract lets project creators launch fundraising campaigns and accept contributions in either ETH or a specific ERC-20 token. Funds are held by the contract until the campaign succeeds (goal reached) or fails (deadline reached without goal). Contributors can claim refunds in failed campaigns. Optional DeFi-style features include platform fees, DAO approvals, whitelisting, minimum contributions, NFT rewards, and fixed-price ICO sales.
+## Project Overview
 
-## Architecture
+This project demonstrates:
 
-```
-Contributors (ETH/ERC20)
-        |
-        v
-  Crowdfunding.sol
-        |
-        +-- Tracks campaigns + per-contributor balances
-        +-- Optional DAO approval gate
-        +-- Optional fee recipient
-        +-- Optional reward NFT minting
-        +-- ICO token escrow + claims
-```
+- Trust-minimized campaign funding in ETH and ERC-20
+- Automatic outcome handling (creator withdrawal or contributor refunds)
+- Fixed-price ICO token sales with escrow and post-success token claims
+- Security-focused patterns used in real Solidity systems
 
-### Contracts
+## Contracts
 
-- `contracts/Crowdfunding.sol`: Main crowdfunding and ICO logic
-- `contracts/MockERC20.sol`: Test token used by unit tests
+- `contracts/Crowdfunding.sol`: main campaign, ICO, fee, whitelist, DAO, and reward logic
+- `contracts/MockERC20.sol`: ERC-20 token used in tests
 
-### Core Data Structures
+## Feature Set
 
-```
-struct Campaign {
-    address creator;
-    uint256 goal;
-    uint256 deadline;
-    uint256 raised;
-    bool withdrawn;
-    address token; // address(0) for ETH, or ERC-20
-    uint256 minContribution;
-    bool cancelled;
-    bool whitelistEnabled;
-    bool rewardEnabled;
-    bool approved;
-    bool isIco;
-    uint256 tokenPrice; // tokens per 1 ETH, scaled by 1e18
-    uint256 tokensSold;
-    uint256 tokensClaimed;
-}
-```
+### Core (MVP)
 
-Mappings:
+- Create campaigns with goal, deadline, and accepted asset
+- Contribute in ETH or ERC-20
+- Withdraw on success
+- Refund on failure
 
-- `campaignId => Campaign`
-- `campaignId => contributor => amount`
-- `campaignId => contributor => whitelisted`
-- `campaignId => contributor => icoOwed`
+### Extended Features
 
-## MVP Features
-
-- Campaign creation with funding goal, deadline, and accepted currency (ETH or ERC-20)
-- ETH or ERC-20 contributions with per-contributor accounting
-- Successful campaigns: creator can withdraw funds
-- Failed campaigns: contributors can claim refunds
-
-## Stretch Features Implemented
-
-- Platform fee with configurable recipient (basis points)
-- Campaign cancellation before any contributions
+- Platform fee (max 3%) with configurable fee recipient
+- Campaign cancellation before first contribution
 - Minimum contribution per campaign
-- Whitelisted contributors
-- NFT reward minted to contributors
-- ERC20-based ICO pricing with fixed token-per-ETH price
-- DAO-controlled campaign approval
+- Whitelist-gated campaigns
+- ERC-721 reward NFT minted once per contributor per campaign
+- ICO campaigns with fixed token-per-ETH pricing
+- DAO-controlled campaign approval gate
 
-## ICO Pricing Flow
+## Quickstart
 
-ICO campaigns sell an ERC-20 token in exchange for ETH at a fixed price set by the creator.
-
-- Use `createIcoCampaign` with `tokenPrice` expressed as tokens per 1 ETH (scaled by `1e18`).
-- Creator deposits sale tokens via `depositIcoTokens` before contributions are accepted.
-- Contributors call `contributeICO` with ETH and can later claim tokens via `claimIcoTokens`.
-- If the campaign fails, contributors can refund ETH and their token allocation is released.
-
-## Reward NFTs
-
-- When `rewardEnabled` is true, a contributor receives one ERC-721 reward per campaign.
-- The reward is minted on first contribution for that campaign.
-- Base URI can be set by the contract owner via `setRewardBaseURI`.
-
-## DAO Approval
-
-- If `dao` is set to a non-zero address, new campaigns start unapproved.
-- The DAO must call `approveCampaign` before contributions are accepted.
-
-## Platform Fees
-
-- Fees are configured in basis points with a hard cap of 3%.
-- The owner sets the fee via `setFee(feeBps, feeRecipient)`.
-
-## Security Considerations
-
-- Checks-Effects-Interactions pattern
-- Reentrancy protection on external transfers
-- Pull-over-push refunds
-- Deadline validation
-- Single withdrawal guard
-- Safe ERC-20 transfers via `SafeERC20`
-- ICO token escrow accounting to prevent overselling
-
-## Known Limitations
-
-- No on-chain metadata (title/description) for campaigns
-- No governance flow beyond DAO approval
-- ICO tokens must be deposited before contributions are accepted
-
-## Gas Considerations
-
-- Per-contribution accounting uses a mapping keyed by campaign and contributor
-- Events are emitted on creation, contribution, withdrawal, refund, and ICO actions for off-chain indexing
-
-## Local Development
-
-### Install
+### 1) Install
 
 ```bash
 npm install
 ```
 
-### Compile
+### 2) Compile and test
 
 ```bash
 npm run compile
-```
-
-### Test
-
-```bash
 npm test
 ```
 
-Test files:
+### 3) Run local node and deploy
+
+```bash
+npx hardhat node
+npx hardhat run scripts/deploy.js --network localhost
+```
+
+### 4) Optional quality checks
+
+```bash
+npm run lint
+npm run coverage
+```
+
+## Example Flows
+
+### ETH campaign: create -> contribute -> withdraw
+
+```js
+const [owner, alice] = await ethers.getSigners();
+const Crowdfunding = await ethers.getContractFactory("Crowdfunding");
+const c = await Crowdfunding.deploy();
+await c.waitForDeployment();
+
+const latest = await ethers.provider.getBlock("latest");
+const deadline = latest.timestamp + 3600;
+
+await c.createCampaign(
+  ethers.parseEther("1"),
+  deadline,
+  ethers.ZeroAddress,
+  ethers.parseEther("0.1"),
+  false,
+  false
+);
+
+await c.connect(alice).contributeETH(1, { value: ethers.parseEther("1") });
+await c.withdraw(1);
+```
+
+### ERC-20 campaign: create -> approve -> contribute -> refund (if failed)
+
+```js
+const [owner, alice] = await ethers.getSigners();
+const Token = await ethers.getContractFactory("MockERC20");
+const token = await Token.deploy("Mock", "MOCK", ethers.parseUnits("1000000", 18));
+await token.waitForDeployment();
+
+await token.mint(alice.address, ethers.parseUnits("100", 18));
+
+const latest = await ethers.provider.getBlock("latest");
+const deadline = latest.timestamp + 3600;
+
+await c.createCampaign(
+  ethers.parseUnits("200", 18),
+  deadline,
+  token.target,
+  ethers.parseUnits("10", 18),
+  false,
+  false
+);
+
+await token.connect(alice).approve(c.target, ethers.parseUnits("50", 18));
+await c.connect(alice).contributeToken(1, ethers.parseUnits("50", 18));
+
+await ethers.provider.send("evm_increaseTime", [3601]);
+await ethers.provider.send("evm_mine", []);
+await c.connect(alice).refund(1);
+```
+
+### ICO campaign: create -> deposit sale tokens -> contribute -> claim
+
+```js
+const [owner, alice] = await ethers.getSigners();
+const Token = await ethers.getContractFactory("MockERC20");
+const sale = await Token.deploy("Sale", "SALE", ethers.parseUnits("1000000", 18));
+await sale.waitForDeployment();
+
+const latest = await ethers.provider.getBlock("latest");
+const deadline = latest.timestamp + 3600;
+
+await c.createIcoCampaign(
+  ethers.parseEther("1"),
+  deadline,
+  sale.target,
+  0,
+  false,
+  false,
+  ethers.parseUnits("1000", 18)
+);
+
+await sale.approve(c.target, ethers.parseUnits("1000", 18));
+await c.depositIcoTokens(1, ethers.parseUnits("1000", 18));
+
+await c.connect(alice).contributeICO(1, { value: ethers.parseEther("1") });
+await c.connect(alice).claimIcoTokens(1);
+```
+
+## Threat Model and Assumptions
+
+- `owner` is trusted to set `feeBps`, `feeRecipient`, reward base URI, and DAO address.
+- If DAO approval is enabled, the DAO can approve or effectively block campaign funding.
+- Campaign creators are trusted to deposit enough ICO tokens for intended sales.
+- The system is non-upgradeable in its current form.
+- This repository is educational and not externally audited.
+
+## Security Notes
+
+- Uses `ReentrancyGuard` on transfer-sensitive functions.
+- Uses checks-effects-interactions in withdraw/refund flows.
+- Uses `SafeERC20` for token transfers.
+- ICO token pool accounting prevents overselling claims.
+
+See `SECURITY.md` for disclosure guidance.
+
+## Testing
 
 - `test/crowdfunding.eth.test.js`
 - `test/crowdfunding.erc20.test.js`
@@ -146,12 +178,46 @@ Test files:
 
 ## Deployment (Sepolia)
 
-1. Copy `.env.example` to `.env` and fill in `SEPOLIA_RPC_URL` and `PRIVATE_KEY`.
-2. Run:
+1. Copy `.env.example` to `.env`.
+2. Set `SEPOLIA_RPC_URL` and `PRIVATE_KEY`.
+3. Deploy:
 
 ```bash
 npx hardhat run scripts/deploy.js --network sepolia
 ```
+
+## Roadmap
+
+### Implemented
+
+- [x] Platform fee
+- [x] Campaign cancellation (pre-funding)
+- [x] Minimum contribution
+- [x] Whitelisted contributors
+- [x] NFT rewards
+- [x] ERC20-based ICO pricing
+- [x] DAO-controlled campaign approval
+
+### Planned
+
+- [ ] Front-end demo dApp (campaign creation and contribution flow)
+- [ ] Better on-chain metadata for campaigns
+- [ ] Formalized governance flow for DAO management
+
+### Out of Scope (Current Version)
+
+- [ ] Production guarantees without external audit
+- [ ] Multi-chain deployment orchestration in this repo
+
+## GitHub About (Recommended)
+
+Suggested repository description:
+
+`Crowdfunding + ICO smart contract (ETH/ERC20) with refunds, fees, whitelisting, rewards, DAO approvals`
+
+Suggested topics:
+
+`solidity, hardhat, defi, crowdfunding, ico, openzeppelin, ethereum, sepolia, smart-contracts, erc20, erc721`
 
 ## License
 

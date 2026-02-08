@@ -5,12 +5,14 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "lint": "echo \"No linter configured\"",
+    "lint": "solhint \"contracts/**/*.sol\"",
+    "coverage": "hardhat coverage",
     "clean": "hardhat clean"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.2"
+    "hardhat": "^2.22.2",
+    "solhint": "^5.0.3"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2"
